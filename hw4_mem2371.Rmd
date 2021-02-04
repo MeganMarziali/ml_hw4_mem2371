@@ -22,6 +22,8 @@ library(caret)
 library(stats)
 library(factoextra)
 library(cluster)
+
+
 ```
 
 ##### Loading data into environment and cleaning
@@ -121,8 +123,9 @@ colMeans(us_arrest, na.rm = TRUE)
 apply(us_arrest, 2, sd, na.rm = TRUE)
 
 # Data should be scaled???
+# Just scale anyways, more of a concern when you have really different things that you want to put into the model
 
-#scale(us_arrest, center = TRUE, scale = TRUE)
+scale(us_arrest, center = TRUE, scale = TRUE)
 ```
 
 I have opted not to scale the data because they are all in the same units.
@@ -142,6 +145,7 @@ gap_stat = clusGap(us_arrest, FUN = kmeans, nstart = 30, K.max = 24, B = 50)
 print(gap_stat, method = "firstmax")
 
 #How do we know what our max k should be?
+#Informed by background knowledge, how many clusters might make sense, can do based on trial and error
 
 set.seed(100)
 gap_stat <- clusGap(us_arrest, FUN = kmeans, nstart = 30, K.max = 24, B = 50)
@@ -179,6 +183,7 @@ gap_stat = clusGap(us_arrest, FUN = hclusCut, K.max = 10, B = 50)
 fviz_gap_stat(gap_stat)
 
 #####do i need to be setting a seed???
+#Set a seed!
 
 #Use number of clusters from gap statistic to obtain cluster assignment for each observation
 clusters.h.3 = cutree(clusters.h, k = 3)
