@@ -1,9 +1,9 @@
 ---
 title: "Assignment 4"
 author: "Megan Marziali"
-date: 
+date: "Feb 3, 2021"
 output:
-  word_document: default
+  github_document: default
 editor_options:
   chunk_output_type: console
 ---
@@ -13,7 +13,7 @@ editor_options:
 ### Loading required paackages
 
 The following code chunk loads the required packages for the assignment.
-```{r packages}
+```{r packages, message = FALSE}
 library(tidyverse)
 library(Amelia)
 library(caret)
@@ -21,7 +21,7 @@ library(caret)
 
 ### Loading data into environment and cleaning
 
-```{r data_prepare}
+```{r data_prepare, message = FALSE}
 nyc_data = 
   read.csv("./data/class4_p1.csv", na = c("", ".", "NA")) %>% 
   janitor::clean_names() %>%
@@ -40,7 +40,7 @@ missmap(nyc_data, main = "Missing values vs observed")
 
 Based on missingness, I would not include the variables "habits7" and "povertygroup" in any models. I would also remove all missingness from variables that I intend to keep in models. With all variables and missing observations included, the total N for the dataset is 3811.
 
-```{r}
+```{r, message = FALSE}
 nyc_restr = 
   select(nyc_data, -habits7, -povertygroup) %>% 
   na.omit()
@@ -52,28 +52,46 @@ After removing the variables "habits7" and "povertygroup", and deleting missing 
 
 ### Data partitioning
 
-```{r partition}
+```{r partition, message = FALSE}
 set.seed(100)
 
 train.indices = createDataPartition(y = nyc_restr$healthydays,p = 0.7,list = FALSE)
 
 training = nyc_restr[train.indices,]
 testing = nyc_restr[-train.indices,]
-
-#Do I need this bit?
-#training.2 = bc.data %>% dplyr::sample_frac(.7)
-#testing.2 = dplyr::anti_join(bc.data, training.2, by = 'id')
-
 ```
 
 ## Problem 1:
 
 Fit two prediction  models using  different subsets of the features in the training data. Features can overlap in the two models, but the feature sets should not be exactly the same across models. Clearly state which features were used in the two models.
 
-```{r models}
-model.1 <- lm(healthydays ~ chronic1 + chronic3 + chronic4 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = training)
-summary(model.1)
+```{r models, message = FALSE}
+model_1 <- lm(healthydays ~ chronic1 + chronic3 + chronic4 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = training)
+summary(model_1)
 
-model.2 <- lm(healthydays ~ tobacco1 + alcohol1 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = training)
-summary(model.2)
+model_2 <- lm(healthydays ~ tobacco1 + alcohol1 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = training)
+summary(model_2)
 ```
+
+## Problem 2:
+
+Apply both models within the test data and determine which model is the preferred prediction model using the appropriate evaluation metric(s). 
+
+```{r predictvalues, message = FALSE}
+model_1_test = lm(healthydays ~ chronic1 + chronic3 + chronic4 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = testing)
+summary(model_1_test)
+
+model_2_test = lm(healthydays ~ tobacco1 + alcohol1 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = testing)
+summary(model_2_test)
+
+
+mse_1 = sum(model_1_test$residuals^2)
+mse_2 = sum(model_2_test$residuals^2)
+```
+
+The outcome we are investigating is continuous, so the appropriate evaluation metric is to assess mean squared error. As model 1 has the smaller mean squared error, we can determine that model 1 is the preferred prediction model.
+
+## Problem 3
+
+The implementation of this model would be helpful if in cases where we are trying to identify factors to intervene on to increase the number of healthy days experienced. As the model works to identify predictors of a higher number of healthy days, we know that those predictors function to increase healthy days experienced.
+
