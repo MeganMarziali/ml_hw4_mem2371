@@ -10,16 +10,21 @@ editor_options:
 
 ## Part 1: Implementing a Simple Prediction Pipeline
 
-### Loading required paackages
+### Problem set-up
+
+##### Loading required paackages
 
 The following code chunk loads the required packages for the assignment.
 ```{r packages, message = FALSE}
 library(tidyverse)
 library(Amelia)
 library(caret)
+library(stats)
+library(factoextra)
+library(cluster)
 ```
 
-### Loading data into environment and cleaning
+##### Loading data into environment and cleaning
 
 ```{r data_prepare, message = FALSE}
 nyc_data = 
@@ -50,7 +55,7 @@ nrow(nyc_restr)
 
 After removing the variables "habits7" and "povertygroup", and deleting missing observations, the total N for the dataset is 3552.
 
-### Data partitioning
+##### Data partitioning
 
 ```{r partition, message = FALSE}
 set.seed(100)
@@ -61,7 +66,7 @@ training = nyc_restr[train.indices,]
 testing = nyc_restr[-train.indices,]
 ```
 
-## Problem 1:
+### Problem 1:
 
 Fit two prediction  models using  different subsets of the features in the training data. Features can overlap in the two models, but the feature sets should not be exactly the same across models. Clearly state which features were used in the two models.
 
@@ -73,7 +78,7 @@ model_2 <- lm(healthydays ~ tobacco1 + alcohol1 + bmi + gpaq8totmin + gpaq11days
 summary(model_2)
 ```
 
-## Problem 2:
+### Problem 2:
 
 Apply both models within the test data and determine which model is the preferred prediction model using the appropriate evaluation metric(s). 
 
@@ -91,7 +96,48 @@ mse_2 = sum(model_2_test$residuals^2)
 
 The outcome we are investigating is continuous, so the appropriate evaluation metric is to assess mean squared error. As model 1 has the smaller mean squared error, we can determine that model 1 is the preferred prediction model.
 
-## Problem 3
+### Problem 3
 
 The implementation of this model would be helpful if in cases where we are trying to identify factors to intervene on to increase the number of healthy days experienced. As the model works to identify predictors of a higher number of healthy days, we know that those predictors function to increase healthy days experienced.
+
+## Part II
+
+### Problem set-up
+
+```{r dataprep2}
+data("USArrests")
+head(USArrests)
+
+#Removing missing
+us_arrest = na.omit(USArrests)
+
+colMeans(us_arrest, na.rm = TRUE)
+apply(us_arrest, 2, sd, na.rm = TRUE)
+
+# Data should be scaled???
+```
+
+We can use the kmeans function in order to identify clusters within the data, based on the three variables.
+```{r}
+set.seed(100)
+clusters = kmeans(us_arrest, 5, nstart = 25)
+str(clusters)
+fviz_cluster(clusters, data = us_arrest)
+#Show the mean value of features within each cluster
+clusters$centers
+
+#Conduct a gap_statistic analysis to determine optimal number of clusters
+set.seed(100)
+gap_stat = clusGap(us_arrest, FUN = kmeans, nstart = 25, K.max = 10, B = 50)
+print(gap_stat, method = "firstmax")
+
+#How do we know what our max k should be?
+
+clusters.10 = kmeans(us_arrest, 10, nstart = 25)
+
+str(clusters.10)
+
+fviz_cluster(clusters.10, data = us_arrest)
+```
+
 
