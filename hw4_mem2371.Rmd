@@ -28,7 +28,7 @@ library(cluster)
 
 ```{r data_prepare, message = FALSE}
 nyc_data = 
-  read.csv("./data/class4_p1.csv", na = c("", ".", "NA")) %>% 
+  read.csv("./data/class4_p1.csv", na = c("", ".", "NA", ".d", ".r")) %>% 
   janitor::clean_names() %>%
   mutate(
     bmi = as.numeric(bmi),
@@ -36,6 +36,9 @@ nyc_data =
     gpaq11days = as.integer(gpaq11days),
     healthydays = as.integer(healthydays)
   )
+
+# Reorganize all character to factor
+# .d and .r are listed as missing
 
 summary(nyc_data)
 nrow(nyc_data)
@@ -50,10 +53,12 @@ nyc_restr =
   select(nyc_data, -habits7, -povertygroup) %>% 
   na.omit()
 
+#nyc_restr = nyc_restr %>% distinct(X1, .keep_all = TRUE)
+
 nrow(nyc_restr)
 ```
 
-After removing the variables "habits7" and "povertygroup", and deleting missing observations, the total N for the dataset is 3552.
+After removing the variables "habits7" (% missing) and "povertygroup" (% missing), and deleting missing observations, the total N for the dataset is 3552.
 
 ##### Data partitioning
 
@@ -89,9 +94,10 @@ summary(model_1_test)
 model_2_test = lm(healthydays ~ tobacco1 + alcohol1 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = testing)
 summary(model_2_test)
 
-
 mse_1 = sum(model_1_test$residuals^2)
 mse_2 = sum(model_2_test$residuals^2)
+
+#Email TAs, ask about calibration in linear regression
 ```
 
 The outcome we are investigating is continuous, so the appropriate evaluation metric is to assess mean squared error. As model 1 has the smaller mean squared error, we can determine that model 1 is the preferred prediction model.
@@ -115,6 +121,8 @@ colMeans(us_arrest, na.rm = TRUE)
 apply(us_arrest, 2, sd, na.rm = TRUE)
 
 # Data should be scaled???
+
+#scale(us_arrest, center = TRUE, scale = TRUE)
 ```
 
 I have opted not to scale the data because they are all in the same units.
@@ -134,47 +142,53 @@ gap_stat = clusGap(us_arrest, FUN = kmeans, nstart = 30, K.max = 24, B = 50)
 print(gap_stat, method = "firstmax")
 
 #How do we know what our max k should be?
+
 set.seed(100)
 gap_stat <- clusGap(us_arrest, FUN = kmeans, nstart = 30, K.max = 24, B = 50)
 fviz_gap_stat(gap_stat) + theme_minimal() + ggtitle("fviz_gap_stat: Gap Statistic")
 
 clusters.6 = kmeans(us_arrest, 6, nstart = 25)
-
 str(clusters.6)
-
 fviz_cluster(clusters.6, data = us_arrest)
 ```
 
+DELETE ABOVE CODE.
 
 ```{r}
 # Create Dissimilarity matrix
 diss.matrix = dist(us_arrest, method = "euclidean")
 
-# Hierarchical clustering using Complete Linkage
+# Hierarchical clustering using COMPLETE Linkage
 clusters.h = hclust(diss.matrix, method = "complete" )
 
 # Plot the obtained dendrogram
 plot(clusters.h, cex = 0.6, hang = -1)
 
 #create function to use within clusGap
+hclusCut = function(x, k) list(cluster = cutree(hclust(dist(x, method = "euclidian"), method = "complete"), k = k))
+
+gap_stat = clusGap(us_arrest, FUN = hclusCut, K.max = 10, B = 50)
+fviz_gap_stat(gap_stat)
+
+# Hierarchical clustering using AVERAGE Linkage
+clusters.a = hclust(diss.matrix, method = "average" )
+
 hclusCut = function(x, k) list(cluster = cutree(hclust(dist(x, method = "euclidian"), method = "average"), k = k))
 
 gap_stat = clusGap(us_arrest, FUN = hclusCut, K.max = 10, B = 50)
 fviz_gap_stat(gap_stat)
 
+#####do i need to be setting a seed???
+
 #Use number of clusters from gap statistic to obtain cluster assignment for each observation
-clusters.h.6 = cutree(clusters.h, k = 6)
-table(clusters.h.6)
+clusters.h.3 = cutree(clusters.h, k = 3)
+table(clusters.h.3)
 
-#Alternatives for hierarchical clustering
+clusters.a.3 = cutree(clusters.a, k = 3)
+table(clusters.a.3)
 
-clusters.hcut = hcut(us_arrest, k = 3, hc_func="hclust", hc_method = "single", hc_metric = "euclidian")
-
-clusters.hcut$size
-fviz_dend(clusters.hcut, rect = TRUE)
-fviz_cluster(clusters.hcut)
-
-gap_stat <- clusGap(us_arrest, FUN = hcut, hc_method = "complete", K.max = 10, B = 50)
-fviz_gap_stat(gap_stat)
+clusters.3 = kmeans(us_arrest, 3, nstart = 25)
+str(clusters.3)
+fviz_cluster(clusters.3, data = us_arrest)
 ```
 
