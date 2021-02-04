@@ -1,0 +1,79 @@
+---
+title: "Assignment 4"
+author: "Megan Marziali"
+date: 
+output:
+  word_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+## Part 1: Implementing a Simple Prediction Pipeline
+
+### Loading required paackages
+
+The following code chunk loads the required packages for the assignment.
+```{r packages}
+library(tidyverse)
+library(Amelia)
+library(caret)
+```
+
+### Loading data into environment and cleaning
+
+```{r data_prepare}
+nyc_data = 
+  read.csv("./data/class4_p1.csv", na = c("", ".", "NA")) %>% 
+  janitor::clean_names() %>%
+  mutate(
+    bmi = as.numeric(bmi),
+    gpaq8totmin = as.numeric(gpaq8totmin),
+    gpaq11days = as.integer(gpaq11days),
+    healthydays = as.integer(healthydays)
+  )
+
+summary(nyc_data)
+nrow(nyc_data)
+
+missmap(nyc_data, main = "Missing values vs observed")
+```
+
+Based on missingness, I would not include the variables "habits7" and "povertygroup" in any models. I would also remove all missingness from variables that I intend to keep in models. With all variables and missing observations included, the total N for the dataset is 3811.
+
+```{r}
+nyc_restr = 
+  select(nyc_data, -habits7, -povertygroup) %>% 
+  na.omit()
+
+nrow(nyc_restr)
+```
+
+After removing the variables "habits7" and "povertygroup", and deleting missing observations, the total N for the dataset is 3552.
+
+### Data partitioning
+
+```{r partition}
+set.seed(100)
+
+train.indices = createDataPartition(y = nyc_restr$healthydays,p = 0.7,list = FALSE)
+
+training = nyc_restr[train.indices,]
+testing = nyc_restr[-train.indices,]
+
+#Do I need this bit?
+#training.2 = bc.data %>% dplyr::sample_frac(.7)
+#testing.2 = dplyr::anti_join(bc.data, training.2, by = 'id')
+
+```
+
+## Problem 1:
+
+Fit two prediction  models using  different subsets of the features in the training data. Features can overlap in the two models, but the feature sets should not be exactly the same across models. Clearly state which features were used in the two models.
+
+```{r models}
+model.1 <- lm(healthydays ~ chronic1 + chronic3 + chronic4 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = training)
+summary(model.1)
+
+model.2 <- lm(healthydays ~ tobacco1 + alcohol1 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = training)
+summary(model.2)
+```
