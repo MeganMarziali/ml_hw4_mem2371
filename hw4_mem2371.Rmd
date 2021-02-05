@@ -23,7 +23,7 @@ library(stats)
 library(factoextra)
 library(cluster)
 
-
+set.seed(100)
 ```
 
 ##### Loading data into environment and cleaning
@@ -36,11 +36,18 @@ nyc_data =
     bmi = as.numeric(bmi),
     gpaq8totmin = as.numeric(gpaq8totmin),
     gpaq11days = as.integer(gpaq11days),
-    healthydays = as.integer(healthydays)
-  )
-
-# Reorganize all character to factor
-# .d and .r are listed as missing
+    healthydays = as.integer(healthydays),
+    chronic1 = as.factor(chronic1),
+    chronic3 = as.factor(chronic3),
+    chronic4 = as.factor(chronic4),
+    tobacco1 = as.factor(tobacco1),
+    alcohol1 = as.factor(alcohol1),
+    agegroup = as.factor(agegroup),
+    dem3 = as.factor(dem3),
+    dem4 = as.factor(dem4),
+    dem8 = as.factor(dem8),
+    povertygroup = as.factor(povertygroup)
+  ) 
 
 summary(nyc_data)
 nrow(nyc_data)
@@ -48,25 +55,22 @@ nrow(nyc_data)
 missmap(nyc_data, main = "Missing values vs observed")
 ```
 
-Based on missingness, I would not include the variables "habits7" and "povertygroup" in any models. I would also remove all missingness from variables that I intend to keep in models. With all variables and missing observations included, the total N for the dataset is 3811.
+To clean the data, I recoded variables to be factor or numerical variables. To further explore the data, I mapped the number of missing observations. Based on missingness, I would not include the variables "habits7" and "povertygroup" in any models. I would also remove all missingness from variables that I intend to keep in models. With all variables and missing observations included, the total N for the dataset is 3811.
 
 ```{r, message = FALSE}
 nyc_restr = 
   select(nyc_data, -habits7, -povertygroup) %>% 
-  na.omit()
-
-#nyc_restr = nyc_restr %>% distinct(X1, .keep_all = TRUE)
+  na.omit() %>% 
+  distinct(x, .keep_all = TRUE)
 
 nrow(nyc_restr)
 ```
 
-After removing the variables "habits7" (% missing) and "povertygroup" (% missing), and deleting missing observations, the total N for the dataset is 3552.
+The variable "habits7" has 1335 missing observations (35.0%) and the variable "povertygroup" has 244 missing observations (6.4%). As both have >5% missing values, I opted to drop them both from the dataset.After removing the variables "habits7" and "povertygroup", and deleting missing observations from all other included variables, the total N for the dataset is 3552.
 
 ##### Data partitioning
 
 ```{r partition, message = FALSE}
-set.seed(100)
-
 train.indices = createDataPartition(y = nyc_restr$healthydays,p = 0.7,list = FALSE)
 
 training = nyc_restr[train.indices,]
@@ -90,27 +94,23 @@ summary(model_2)
 Apply both models within the test data and determine which model is the preferred prediction model using the appropriate evaluation metric(s). 
 
 ```{r predictvalues, message = FALSE}
-model_1_test = lm(healthydays ~ chronic1 + chronic3 + chronic4 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = testing)
-summary(model_1_test)
+fitted_1 = predict(model_1,testing,type = 'response') 
+fitted_2 = predict(model_2,testing,type = 'response') 
+observed = testing$healthydays
 
-model_2_test = lm(healthydays ~ tobacco1 + alcohol1 + bmi + gpaq8totmin + gpaq11days + habits5 + dem3, data = testing)
-summary(model_2_test)
-
-mse_1 = sum(model_1_test$residuals^2)
-mse_2 = sum(model_2_test$residuals^2)
-
-#Email TAs, ask about calibration in linear regression
+mse_1 = mean((observed - fitted_1)**2)
+mse_2 = mean((observed - fitted_2)**2)
 ```
 
 The outcome we are investigating is continuous, so the appropriate evaluation metric is to assess mean squared error. As model 1 has the smaller mean squared error, we can determine that model 1 is the preferred prediction model.
 
 ### Problem 3
 
-The implementation of this model would be helpful if in cases where we are trying to identify factors to intervene on to increase the number of healthy days experienced. As the model works to identify predictors of a higher number of healthy days, we know that those predictors function to increase healthy days experienced.
+The implementation of this model would be helpful for preventative care. We could use predictive modeling to identify factors to intervene on, in order to increase the number of healthy days experienced. As the model works to identify predictors of a higher number of healthy days, we know that those predictors function to increase healthy days experienced.
 
 ## Part II
 
-### Problem set-up
+#### Problem set-up
 
 ```{r dataprep2}
 data("USArrests")
@@ -122,78 +122,60 @@ us_arrest = na.omit(USArrests)
 colMeans(us_arrest, na.rm = TRUE)
 apply(us_arrest, 2, sd, na.rm = TRUE)
 
-# Data should be scaled???
-# Just scale anyways, more of a concern when you have really different things that you want to put into the model
-
 scale(us_arrest, center = TRUE, scale = TRUE)
 ```
 
-I have opted not to scale the data because they are all in the same units.
+The code chunk above calls the appropriate dataset, removes any potential missing observations, checks if scaling is necessary and scales the data.
 
-We can use the kmeans function in order to identify clusters within the data, based on the three variables.
-```{r}
-set.seed(100)
-clusters = kmeans(us_arrest, 5, nstart = 25)
-str(clusters)
-fviz_cluster(clusters, data = us_arrest)
-#Show the mean value of features within each cluster
-clusters$centers
-
-#Conduct a gap_statistic analysis to determine optimal number of clusters
-set.seed(100)
-gap_stat = clusGap(us_arrest, FUN = kmeans, nstart = 30, K.max = 24, B = 50)
-print(gap_stat, method = "firstmax")
-
-#How do we know what our max k should be?
-#Informed by background knowledge, how many clusters might make sense, can do based on trial and error
-
-set.seed(100)
-gap_stat <- clusGap(us_arrest, FUN = kmeans, nstart = 30, K.max = 24, B = 50)
-fviz_gap_stat(gap_stat) + theme_minimal() + ggtitle("fviz_gap_stat: Gap Statistic")
-
-clusters.6 = kmeans(us_arrest, 6, nstart = 25)
-str(clusters.6)
-fviz_cluster(clusters.6, data = us_arrest)
-```
-
-DELETE ABOVE CODE.
+### Problem 4
 
 ```{r}
 # Create Dissimilarity matrix
 diss.matrix = dist(us_arrest, method = "euclidean")
+```
 
-# Hierarchical clustering using COMPLETE Linkage
-clusters.h = hclust(diss.matrix, method = "complete" )
+#### Part 1: Complete Linkage
 
-# Plot the obtained dendrogram
-plot(clusters.h, cex = 0.6, hang = -1)
+```{r}
+clusters_c = hclust(diss.matrix, method = "complete" )
 
-#create function to use within clusGap
+plot(clusters_c, cex = 0.6, hang = -1)
+
 hclusCut = function(x, k) list(cluster = cutree(hclust(dist(x, method = "euclidian"), method = "complete"), k = k))
 
 gap_stat = clusGap(us_arrest, FUN = hclusCut, K.max = 10, B = 50)
 fviz_gap_stat(gap_stat)
 
-# Hierarchical clustering using AVERAGE Linkage
-clusters.a = hclust(diss.matrix, method = "average" )
+#Use number of clusters from gap statistic to obtain cluster assignment for each observation
+clusters_c_3 = cutree(clusters_c, k = 3)
+table(clusters_c_3)
+```
+
+After running the above hierarchical clustering model using the "complete" linkage method, the optimal number of clusters per the gap statistic is 3.
+
+Within cluster 1, there are 16 states included; cluster 2 includes 14 states, and cluster 3 includes 20 states.
+
+#### Part 2: Average Linkage
+
+```{r}
+clusters_a = hclust(diss.matrix, method = "average" )
+
+plot(clusters_a, cex = 0.6, hang = -1)
 
 hclusCut = function(x, k) list(cluster = cutree(hclust(dist(x, method = "euclidian"), method = "average"), k = k))
 
 gap_stat = clusGap(us_arrest, FUN = hclusCut, K.max = 10, B = 50)
 fviz_gap_stat(gap_stat)
 
-#####do i need to be setting a seed???
-#Set a seed!
-
-#Use number of clusters from gap statistic to obtain cluster assignment for each observation
-clusters.h.3 = cutree(clusters.h, k = 3)
-table(clusters.h.3)
-
-clusters.a.3 = cutree(clusters.a, k = 3)
-table(clusters.a.3)
-
-clusters.3 = kmeans(us_arrest, 3, nstart = 25)
-str(clusters.3)
-fviz_cluster(clusters.3, data = us_arrest)
+#Investigating cluster composition
+clusters_a_3 = cutree(clusters_a, k = 3)
+table(clusters_a_3)
 ```
 
+After running the above hierarchical clustering model using the "average" linkage method, the optimal number of clusters per the gap statistic is 3.
+
+Within cluster 1, there are 16 states included; cluster 2 includes 14 states, and cluster 3 includes 20 states. Given these results, there are no differences between using the complete or average linkage method, as both point towards using 3 clusters.
+
+### Problem 5
+
+Using the clusters as exposures, we could assess whether different arrest rates are resulting in poor health outcomes.
